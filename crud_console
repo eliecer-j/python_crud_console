@@ -1,0 +1,92 @@
+import requests
+import click
+from tabulate import tabulate
+
+url = 'API_REST'
+
+headers = {
+    'apikey': 'API_KEY_SECRET',
+    'Authorization': 'Bearer API_KEY_SECRET'
+}
+
+
+header={'id':'Id', 'created_at':'Created_at', 'name':'Name', 'age':'Age'}
+
+@click.command()
+def read_table():
+   #new_url = f'{url}?select=*'
+   url+'?select=*'
+   response = requests.get(url, headers=headers)
+   if response.status_code == 200:
+    data = response.json()
+    #print(data[0]['id'])
+    click.echo(tabulate(data, headers=header, tablefmt='fancy_grid'))
+   else:
+      print(requests.ConnectionError())
+
+@click.command()
+@click.option('--name', prompt='Ingrese el nombre', help='Ingrese el nombre del elemento')
+@click.option('--age', prompt='Ingrese la edad', help='debe ingresar la edad', required=True)
+def add_row(name, age):
+   data={'name': name, 'age':age}
+  # click.echo(data)
+   response = requests.post(url, data=data, headers=headers)
+   if response.status_code == 201:
+      click.echo('add with good!')
+   else:
+      click.echo('not saved!')
+   ctx = click.Context(read_table)
+   read_table.invoke(ctx)
+
+
+@click.command()
+@click.option('--id', prompt='ingresa el id a eliminar', required=True)    
+def delete(id):
+   id_url = url+'?id=eq.'+id
+   response = requests.get(id_url, headers=headers)
+   data = response.json()
+   if len(data) <= 0:
+      click.echo('id no existe')
+   else:
+      response = requests.delete(id_url, headers=headers)
+      click.echo('registro eliminado')
+   ctx = click.Context(read_table)
+   read_table.invoke(ctx)
+
+@click.command()
+@click.option('--id', prompt='indica el id a actualizar', required=True)
+def update(id):
+   new_url = url+'?id=eq.'+id
+   response = requests.get(new_url, headers=headers)
+   data = response.json()
+   if response.status_code == 200:
+      click.echo(tabulate(data, headers=header, tablefmt='fancy_grid'))
+   
+      name = input(str('actualizar nombre: '))
+      age = input(str('actualizar edad: '))
+      data = {'name': name, 'age':age}
+      
+      response = requests.patch(new_url, data=data, headers=headers)
+      if response.status_code == 200 or 204:
+         response = requests.get(new_url, headers=headers)
+         data = response.json()
+         click.echo(tabulate(data, headers=header, tablefmt='fancy_grid'))
+      else:
+         click.echo('error al actualizar')
+
+
+
+
+
+@click.group()
+def group():
+   pass
+
+group.add_command(read_table)
+group.add_command(add_row)
+group.add_command(delete)
+group.add_command(update)
+
+if __name__ == '__main__':
+    group()
+ 
